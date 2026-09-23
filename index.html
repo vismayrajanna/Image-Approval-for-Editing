@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shoot Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf8f5; --paper-raised:#fffdfa; --ink:#1f1d1a; --ink-soft:#6b655c;
+    --rule:#e2ddd4; --sage:#4a7c59; --sage-soft:#e8f0ea; --red:#a63d40; --red-soft:#f7e8e8;
+    --clay:#b5653f; --clay-soft:#f7ebe4; --shadow:0 1px 3px rgba(31,29,26,0.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#1a1815; --paper-raised:#242019; --ink:#f0ece6; --ink-soft:#a39c91;
+      --rule:#38332b; --sage:#7fb08e; --sage-soft:#22301f; --red:#d98588; --red-soft:#33201f;
+      --clay:#d89068; --clay-soft:#33241c; --shadow:0 1px 3px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#1a1815; --paper-raised:#242019; --ink:#f0ece6; --ink-soft:#a39c91;
+    --rule:#38332b; --sage:#7fb08e; --sage-soft:#22301f; --red:#d98588; --red-soft:#33201f;
+    --clay:#d89068; --clay-soft:#33241c; --shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+  .app{display:flex;min-height:100vh;}
+  .rail{width:250px;flex-shrink:0;border-right:1px solid var(--rule);padding:22px 16px 90px;overflow-y:auto;max-height:100vh;position:sticky;top:0;}
+  .rail-title{font-family:'Fraunces',serif;font-size:1.25rem;font-weight:600;text-wrap:balance;}
+  .rail-sub{color:var(--ink-soft);font-size:0.78rem;margin:6px 0 14px;}
+  .rail-search{width:100%;padding:7px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:0.82rem;margin-bottom:10px;}
+  .rail-list{display:flex;flex-direction:column;gap:2px;}
+  .rail-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:none;background:none;color:var(--ink);font-family:'Inter',sans-serif;font-size:0.84rem;cursor:pointer;}
+  .rail-item:hover{background:var(--clay-soft);}
+  .rail-item.active{background:var(--clay-soft);color:var(--clay);font-weight:600;}
+  .rail-empty{color:var(--ink-soft);font-size:0.8rem;padding:10px 2px;}
+  .rail-note{color:var(--ink-soft);font-size:0.72rem;margin-top:14px;line-height:1.45;}
+  .rail-btn{width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--rule);background:none;color:var(--ink-soft);font-family:'Inter',sans-serif;font-size:0.78rem;cursor:pointer;margin-bottom:10px;}
+  .rail-btn:hover{border-color:var(--clay);color:var(--clay);}
+
+  .main{flex:1;padding:26px clamp(16px,3vw,40px) 120px;min-width:0;}
+  .folder-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .folder-name{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:600;}
+  .folder-status{color:var(--ink-soft);font-size:0.82rem;}
+  .folder-path{color:var(--ink-soft);font-size:0.8rem;margin:6px 0 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .crumb{cursor:pointer;}
+  .crumb:hover{color:var(--clay);}
+  .crumb.current{color:var(--ink);font-weight:600;cursor:default;}
+  .subfolders{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .subfolder-chip{display:flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid var(--rule);border-radius:999px;font-size:0.82rem;cursor:pointer;background:var(--paper-raised);}
+  .subfolder-chip:hover{border-color:var(--clay);color:var(--clay);}
+  .empty-state{color:var(--ink-soft);font-size:0.9rem;text-align:center;padding:48px 20px;border:1px dashed var(--rule);border-radius:10px;}
+
+  .pill{font-family:'JetBrains Mono',monospace;font-size:0.65rem;padding:3px 8px;border-radius:999px;white-space:nowrap;}
+  .pill-done{background:var(--sage-soft);color:var(--sage);}
+  .pill-pending{background:var(--rule);color:var(--ink-soft);}
+  .pill-warn{background:var(--clay-soft);color:var(--clay);}
+
+  .grid{display:grid;gap:15px;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));}
+  .card{background:var(--paper-raised);border:1px solid var(--rule);border-radius:9px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  .card.drag-over{border-color:var(--clay);}
+  .card.dragging{opacity:0.45;}
+  .card-photo{position:relative;width:100%;aspect-ratio:4/5;background:var(--rule);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .card-photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in;}
+  .loading{color:var(--ink-soft);font-size:0.76rem;}
+  .order-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.62);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.72rem;padding:3px 8px;border-radius:5px;}
+  .move-btns{position:absolute;top:7px;right:7px;display:flex;gap:4px;}
+  .move-btns button{width:25px;height:25px;border-radius:5px;border:none;cursor:pointer;background:rgba(0,0,0,0.62);color:#fff;font-size:0.76rem;line-height:1;display:flex;align-items:center;justify-content:center;}
+  .move-btns button:disabled{opacity:0.32;cursor:default;}
+  .move-btns .remove-btn{background:rgba(166,61,64,0.85);}
+  .grip{position:absolute;bottom:7px;right:8px;color:rgba(255,255,255,0.75);font-size:0.72rem;cursor:grab;user-select:none;}
+  .card-body{padding:11px 12px 13px;display:flex;flex-direction:column;gap:7px;}
+  .orig-name{font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dim-label{font-family:'JetBrains Mono',monospace;font-size:0.66rem;color:var(--ink-soft);}
+  .dim-label:empty{display:none;}
+  .label-input,.desc-input,select.label-input{width:100%;padding:7px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:0.84rem;}
+  .desc-input{resize:vertical;min-height:44px;}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;}
+  .chip{font-size:0.7rem;padding:3px 8px;border-radius:999px;cursor:pointer;border:1px solid var(--rule);background:none;color:var(--ink-soft);font-family:'Inter',sans-serif;}
+  .chip.on{background:var(--clay-soft);color:var(--clay);border-color:var(--clay);}
+  .new-name{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--sage);}
+
+  .removed-bar{margin-top:20px;padding:13px 15px;border:1px dashed var(--rule);border-radius:9px;display:none;}
+  .removed-bar.show{display:block;}
+  .removed-title{font-size:0.78rem;color:var(--ink-soft);margin-bottom:8px;}
+  .removed-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .removed-chip{font-family:'JetBrains Mono',monospace;font-size:0.7rem;background:var(--rule);color:var(--ink-soft);padding:4px 9px;border-radius:5px;cursor:pointer;border:none;}
+  .removed-chip:hover{color:var(--clay);}
+
+  .confirm-bar{position:fixed;left:250px;right:0;bottom:0;z-index:20;padding:14px clamp(16px,3vw,40px);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--paper-raised);border-top:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .confirm-text{font-size:0.86rem;}
+  .confirm-btn{font-family:'Inter',sans-serif;font-weight:600;font-size:0.85rem;padding:9px 16px;border-radius:7px;border:none;background:var(--clay);color:#fff;cursor:pointer;}
+  .confirm-btn:disabled{opacity:0.55;cursor:default;}
+  .confirm-link{font-size:0.82rem;color:var(--sage);}
+  .toast{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--sage);}
+  #confirmAction{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  #confirmAction .label-input{width:auto;min-width:150px;}
+
+  .banner{border-radius:9px;padding:13px 16px;margin-bottom:18px;font-size:0.88rem;}
+  .banner-warn{background:var(--clay-soft);color:var(--clay);}
+
+  .lightbox{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;}
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:100%;max-height:100%;object-fit:contain;}
+
+  /* sign-in */
+  .signin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .signin-card{max-width:440px;text-align:center;}
+  .signin-card h1{font-family:'Fraunces',serif;font-size:2rem;font-weight:600;margin:0 0 10px;}
+  .signin-card p{color:var(--ink-soft);font-size:0.92rem;margin-bottom:24px;}
+  .who{display:flex;align-items:center;gap:8px;font-size:0.76rem;color:var(--ink-soft);margin-bottom:12px;}
+  .who button{font-size:0.72rem;padding:3px 8px;border-radius:5px;border:1px solid var(--rule);background:none;color:var(--ink-soft);cursor:pointer;}
+
+  @media (max-width:860px){
+    .app{flex-direction:column;}
+    .rail{width:100%;max-height:44vh;position:static;border-right:none;border-bottom:1px solid var(--rule);}
+    .confirm-bar{left:0;}
+  }
+</style>
+</head>
+<body>
+<div id="appRoot"><div class="signin"><div class="signin-card"><p>Starting…</p></div></div></div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- settings come from config.js, with the folder picks
+  // overridable per-browser via the one-click folder picker (localStorage
+  // wins once someone has picked, so config.js stays just the fallback) ----------
+  var CLIENT_ID     = window.SHOOT_ORDER_CONFIG.clientId;
+  var API_KEY       = window.SHOOT_ORDER_CONFIG.apiKey || '';
+  var ROOT_FOLDER_ID, FINAL_FOLDER_ID;
+  try{
+    ROOT_FOLDER_ID = localStorage.getItem('so_root_folder') || window.SHOOT_ORDER_CONFIG.rootFolderId || '';
+    FINAL_FOLDER_ID = localStorage.getItem('so_final_folder') || window.SHOOT_ORDER_CONFIG.finalFolderId || '';
+  }catch(e){
+    ROOT_FOLDER_ID = window.SHOOT_ORDER_CONFIG.rootFolderId || '';
+    FINAL_FOLDER_ID = window.SHOOT_ORDER_CONFIG.finalFolderId || '';
+  }
+  var KNOWN_LABELS  = window.SHOOT_ORDER_CONFIG.labels ||
+    ["Style Guide", "Wash Care Cotton", "Light Blocking", "Back loop", "Front view", "Eyelets", "Lifestyle"];
+  var SCOPE = 'https://www.googleapis.com/auth/drive';
+  var STATE_FILE = 'shoot-order-state.json';
+
+  // ---------- state ----------
+  var token = null, tokenClient = null, tokenExpiry = 0;
+  var folders = [], navPath = [], subfolders = [], state = [], removed = [];
+  var shootState = { shoots: {} };     // the shared record, kept in Drive
+  var stateFileId = null;
+  var confirmed = false, filterText = '', dragIndex = null;
+  var thumbUrls = {};                  // fileId -> object URL
+
+  function currentFolder(){ return navPath.length ? navPath[navPath.length - 1] : null; }
+
+  // ---------- small helpers ----------
+  function el(tag, cls, html){
+    var e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(html !== undefined) e.innerHTML = html;
+    return e;
+  }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function letterFor(i){
+    var s = ''; i = i + 1;
+    while(i > 0){ var r = (i - 1) % 26; s = String.fromCharCode(97 + r) + s; i = Math.floor((i - 1) / 26); }
+    return s;
+  }
+  function parseExisting(name){
+    var dot = name.lastIndexOf('.');
+    if(dot < 0) return { label: '' };
+    var parts = name.slice(0, dot).split('.');
+    if(parts.length >= 2 && /^[a-z]+$/i.test(parts[0])) return { label: parts.slice(1).join('.') };
+    return { label: '' };
+  }
+  function newNameFor(item){
+    var lbl = (item.label || '').trim();
+    return lbl ? (letterFor(item.order) + '.' + lbl + item.ext) : (letterFor(item.order) + item.ext);
+  }
+  function formatBytes(b){
+    if(!b || b <= 0) return '';
+    if(b < 1024) return b + ' B';
+    if(b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+  }
+  function gcd(a, b){ return b === 0 ? a : gcd(b, a % b); }
+  function ratio(w, h){
+    if(!w || !h) return '';
+    var g = gcd(w, h) || 1, rw = w / g, rh = h / g;
+    if(rw > 40 || rh > 40) return (w / h).toFixed(2) + ':1';
+    return rw + ':' + rh;
+  }
+  function dimText(it){
+    var bits = [];
+    if(it.w && it.h) bits.push(it.w + '×' + it.h + ' · ' + ratio(it.w, it.h));
+    var s = formatBytes(it.size);
+    if(s) bits.push(s);
+    return bits.join(' · ');
+  }
+  var NOISE = ['myntra','amazon','flipkart','ajio','vaaree','final','regular','new','set of three','crop','tokka','thokka'];
+  function suggestDestName(name){
+    var words = String(name).replace(/[_\-]+/g, ' ').split(/\s+/).filter(Boolean);
+    var kept = words.filter(function(w){ return NOISE.indexOf(w.toLowerCase()) === -1; });
+    if(!kept.length) kept = words;
+    return kept.map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }).join(' ').trim();
+  }
+  function qEsc(s){ return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+  // ---------- Google sign-in ----------
+  var googleReady = false;
+
+  function renderSignIn(message){
+    document.getElementById('appRoot').innerHTML =
+      '<div class="signin"><div class="signin-card">' +
+        '<h1>Shoot Order</h1>' +
+        '<p id="signInMsg">' + (message || 'Sign in with the Google account that has access to the shoot folders.') + '</p>' +
+        '<button class="confirm-btn" id="signInBtn">Sign in with Google</button>' +
+      '</div></div>';
+    document.getElementById('signInBtn').addEventListener('click', function(){
+      if(!googleReady){
+        document.getElementById('signInMsg').textContent =
+          'Google sign-in is still loading — give it a moment and press the button again.';
+        return;
+      }
+      requestToken(true);
+    });
+  }
+
+  function renderSetupNeeded(){
+    document.getElementById('appRoot').innerHTML =
+      '<div class="signin"><div class="signin-card"><h1>Shoot Order</h1>' +
+      '<p>This copy has not been set up yet — open <strong>config.js</strong> and paste in your Google client ID. ' +
+      'The README next to these files explains how to get one.</p></div></div>';
+  }
+
+  // ---------- one-click Drive folder connect (Google Picker) ----------
+  var pickerLoaded = false, pickerLoading = false;
+  function ensurePicker(cb){
+    if(pickerLoaded){ cb(); return; }
+    if(!window.gapi){ setTimeout(function(){ ensurePicker(cb); }, 150); return; }
+    if(pickerLoading){ setTimeout(function(){ ensurePicker(cb); }, 150); return; }
+    pickerLoading = true;
+    gapi.load('picker', function(){ pickerLoaded = true; pickerLoading = false; cb(); });
+  }
+
+  function openFolderPicker(title, onPick, onCancelOrError){
+    ensurePicker(function(){
+      try{
+        var view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+          .setSelectFolderEnabled(true)
+          .setIncludeFolders(true)
+          .setMode(google.picker.DocsViewMode.LIST);
+        var builder = new google.picker.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(token)
+          .setTitle(title)
+          .setCallback(function(data){
+            if(data.action === google.picker.Action.PICKED && data.docs && data.docs[0]){
+              onPick(data.docs[0].id, data.docs[0].name);
+            } else if(data.action === google.picker.Action.CANCEL && onCancelOrError){
+              onCancelOrError();
+            }
+          });
+        if(API_KEY) builder.setDeveloperKey(API_KEY);
+        builder.build().setVisible(true);
+      }catch(e){
+        if(onCancelOrError) onCancelOrError(e);
+      }
+    });
+  }
+
+  // Shown right after sign-in (first run), or from "Change folders" in the
+  // sidebar. `change:true` keeps the screen open with a Done button instead
+  // of jumping straight into the app the moment both folders are picked.
+  function renderFolderSetup(opts){
+    opts = opts || {};
+    var isChange = !!opts.change;
+    document.getElementById('appRoot').innerHTML =
+      '<div class="signin"><div class="signin-card">' +
+        '<h1>' + (isChange ? 'Change folders' : 'Connect your Drive folder') + '</h1>' +
+        '<p>Pick the folder that holds your shoot folders, and the Final folder approved copies go into — ' +
+        'one click each, nothing to copy or paste. This is remembered on this browser.</p>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;align-items:stretch;max-width:300px;margin:0 auto 6px;">' +
+          '<button class="confirm-btn" id="pickRootBtn"></button>' +
+          '<button class="confirm-btn" id="pickFinalBtn" style="background:var(--sage)"></button>' +
+          (isChange ? '<button class="confirm-btn" id="doneBtn" style="background:transparent;color:var(--ink-soft);border:1px solid var(--rule)">Done</button>' : '') +
+        '</div>' +
+        '<p id="folderSetupMsg" style="font-size:0.78rem;color:var(--ink-soft);min-height:1.2em;"></p>' +
+      '</div></div>';
+
+    function relabel(){
+      document.getElementById('pickRootBtn').textContent =
+        ROOT_FOLDER_ID ? '✓ Shoot folder chosen — change' : 'Choose shoot folder…';
+      document.getElementById('pickFinalBtn').textContent =
+        FINAL_FOLDER_ID ? '✓ Final folder chosen — change' : 'Choose Final folder…';
+    }
+    relabel();
+
+    function afterPick(){
+      relabel();
+      if(!isChange && ROOT_FOLDER_ID && FINAL_FOLDER_ID) start();
+    }
+
+    document.getElementById('pickRootBtn').addEventListener('click', function(){
+      var msg = document.getElementById('folderSetupMsg'); msg.textContent = 'Opening Google Drive…';
+      openFolderPicker('Choose the folder that holds your shoot folders', function(id, name){
+        ROOT_FOLDER_ID = id;
+        try{ localStorage.setItem('so_root_folder', id); }catch(e){}
+        msg.textContent = 'Shoot folder set to "' + name + '".';
+        afterPick();
+      }, function(e){
+        msg.textContent = e ? 'Could not open the folder picker. Check the API key in config.js.' : '';
+      });
+    });
+    document.getElementById('pickFinalBtn').addEventListener('click', function(){
+      var msg = document.getElementById('folderSetupMsg'); msg.textContent = 'Opening Google Drive…';
+      openFolderPicker('Choose your Final folder', function(id, name){
+        FINAL_FOLDER_ID = id;
+        try{ localStorage.setItem('so_final_folder', id); }catch(e){}
+        msg.textContent = 'Final folder set to "' + name + '".';
+        afterPick();
+      }, function(e){
+        msg.textContent = e ? 'Could not open the folder picker. Check the API key in config.js.' : '';
+      });
+    });
+    if(isChange){
+      document.getElementById('doneBtn').addEventListener('click', function(){ start(); });
+    }
+  }
+
+  function initTokenClient(){
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      callback: function(resp){
+        if(resp && resp.access_token){
+          token = resp.access_token;
+          tokenExpiry = Date.now() + ((resp.expires_in || 3600) - 60) * 1000;
+          try{ sessionStorage.setItem('so_token', token); sessionStorage.setItem('so_exp', String(tokenExpiry)); }catch(e){}
+          start();
+        } else {
+          renderSignIn('Sign-in did not complete. Try again.');
+        }
+      },
+      error_callback: function(){ renderSignIn('Sign-in was cancelled or blocked. Check that pop-ups are allowed, then try again.'); }
+    });
+  }
+
+  function requestToken(interactive){
+    if(!tokenClient) initTokenClient();
+    tokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+  }
+
+  function signOut(){
+    try{ sessionStorage.removeItem('so_token'); sessionStorage.removeItem('so_exp'); }catch(e){}
+    if(token && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(token, function(){});
+    token = null;
+    renderSignIn();
+  }
+
+  // ---------- Drive ----------
+  async function drive(path, opts){
+    opts = opts || {};
+    var headers = opts.headers || {};
+    headers['Authorization'] = 'Bearer ' + token;
+    var res = await fetch('https://www.googleapis.com/drive/v3' + path, {
+      method: opts.method || 'GET',
+      headers: headers,
+      body: opts.body
+    });
+    if(res.status === 401){
+      token = null;
+      renderSignIn('Your session expired. Sign in again.');
+      throw new Error('unauthorised');
+    }
+    if(!res.ok){
+      var text = await res.text();
+      throw new Error('Drive ' + res.status + ': ' + text.slice(0, 200));
+    }
+    return opts.raw ? res : res.json();
+  }
+
+  var FILE_FIELDS = 'files(id,name,mimeType,size,thumbnailLink,imageMediaMetadata(width,height)),nextPageToken';
+
+  async function listChildren(parentId){
+    var out = [], pageToken = null;
+    do{
+      var q = encodeURIComponent("'" + qEsc(parentId) + "' in parents and trashed = false");
+      var url = '/files?q=' + q + '&fields=' + encodeURIComponent(FILE_FIELDS) +
+                '&pageSize=200&orderBy=name' + (pageToken ? '&pageToken=' + pageToken : '');
+      var data = await drive(url);
+      out = out.concat(data.files || []);
+      pageToken = data.nextPageToken;
+    } while(pageToken);
+    return out;
+  }
+
+  async function createFolder(name, parentId){
+    return drive('/files?fields=id,name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+    });
+  }
+
+  async function copyFile(fileId, name, parentId){
+    return drive('/files/' + fileId + '/copy?fields=id,name,size', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, parents: [parentId] })
+    });
+  }
+
+  async function fetchBlob(url){
+    var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+    if(!res.ok) throw new Error('fetch failed ' + res.status);
+    return res.blob();
+  }
+
+  // Drive hands us a ready-made thumbnail URL, so previews cost one small
+  // request each instead of downloading the whole photo.
+  async function thumbFor(file){
+    if(thumbUrls[file.id]) return thumbUrls[file.id];
+    var link = file.thumbnailLink;
+    if(link){
+      link = link.replace(/=s\d+$/, '=s600');
+      try{
+        var blob = await fetchBlob(link);
+        var url = URL.createObjectURL(blob);
+        thumbUrls[file.id] = url;
+        return url;
+      }catch(e){ /* fall through to the full file */ }
+    }
+    var full = await fetchBlob('https://www.googleapis.com/drive/v3/files/' + file.id + '?alt=media');
+    var u = URL.createObjectURL(full);
+    thumbUrls[file.id] = u;
+    return u;
+  }
+
+  // ---------- the shared record, stored as a file in Final/ ----------
+  async function loadShootState(){
+    try{
+      var q = encodeURIComponent("'" + qEsc(FINAL_FOLDER_ID) + "' in parents and name = '" + qEsc(STATE_FILE) + "' and trashed = false");
+      var found = await drive('/files?q=' + q + '&fields=files(id,name)');
+      if(found.files && found.files.length){
+        stateFileId = found.files[0].id;
+        var res = await drive('/files/' + stateFileId + '?alt=media', { raw: true });
+        var txt = await res.text();
+        var parsed = JSON.parse(txt);
+        if(parsed && typeof parsed === 'object' && parsed.shoots) shootState = parsed;
+      }
+    }catch(e){ /* first run, or unreadable — start clean */ }
+  }
+
+  async function saveShootState(){
+    var body = JSON.stringify(shootState, null, 1);
+    try{
+      if(stateFileId){
+        await fetch('https://www.googleapis.com/upload/drive/v3/files/' + stateFileId + '?uploadType=media', {
+          method: 'PATCH',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: body
+        });
+      } else {
+        var boundary = 'so' + Date.now();
+        var meta = { name: STATE_FILE, parents: [FINAL_FOLDER_ID], mimeType: 'application/json' };
+        var multipart =
+          '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+          '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + body +
+          '\r\n--' + boundary + '--';
+        var res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+          body: multipart
+        });
+        var j = await res.json();
+        stateFileId = j.id;
+      }
+    }catch(e){ /* best effort — the copies in Drive are the real record */ }
+  }
+
+  // ---------- shell ----------
+  function renderShell(){
+    document.getElementById('appRoot').innerHTML =
+      '<div class="app">' +
+        '<aside class="rail">' +
+          '<div class="rail-title">Shoot Order</div>' +
+          '<div class="rail-sub">Sequence and tag product photos, then approve a clean copy into Final/.</div>' +
+          '<div class="who" id="who"></div>' +
+          '<button class="rail-btn" id="reloadBtn">↻ Reload</button>' +
+          '<button class="rail-btn" id="foldersBtn">📁 Change folders</button>' +
+          '<input class="rail-search" id="railSearch" type="text" placeholder="Filter folders…">' +
+          '<nav class="rail-list" id="railList"><div class="rail-empty">Loading folders…</div></nav>' +
+          '<div class="rail-note">Pick a folder, set the order and tag each frame, then approve — you’ll name the curtain type and colour (e.g. “Zoom Blue”) and it copies into Final/&lt;that name&gt;/. Originals are left exactly as they are.</div>' +
+        '</aside>' +
+        '<main class="main" id="main"><div class="empty-state">Pick a folder on the left to get started.</div></main>' +
+      '</div>';
+    document.getElementById('reloadBtn').addEventListener('click', function(){ location.reload(); });
+    document.getElementById('foldersBtn').addEventListener('click', function(){ renderFolderSetup({ change: true }); });
+    document.getElementById('railSearch').addEventListener('input', function(e){
+      filterText = e.target.value; renderRail();
+    });
+    var who = document.getElementById('who');
+    who.innerHTML = '<span>Signed in</span>';
+    var out = document.createElement('button');
+    out.textContent = 'Sign out';
+    out.addEventListener('click', signOut);
+    who.appendChild(out);
+  }
+
+  async function loadFolders(){
+    try{
+      var files = await listChildren(ROOT_FOLDER_ID);
+      folders = files
+        .filter(function(f){ return f.mimeType === 'application/vnd.google-apps.folder' && f.id !== FINAL_FOLDER_ID; })
+        .map(function(f){ return { id: f.id, name: f.name }; })
+        .sort(function(a,b){ return a.name.localeCompare(b.name); });
+      renderRail();
+    }catch(e){
+      var list = document.getElementById('railList');
+      list.innerHTML = '';
+      list.appendChild(el('div', 'rail-empty', 'Could not read Drive. ' + esc(e.message)));
+    }
+  }
+
+  function statusOf(folderId){
+    var rec = shootState.shoots[folderId];
+    return rec && rec.finalFolderId ? 'done' : 'pending';
+  }
+
+  function renderRail(){
+    var list = document.getElementById('railList');
+    if(!list) return;
+    list.innerHTML = '';
+    var visible = folders.filter(function(f){
+      return f.name.toLowerCase().indexOf(filterText.toLowerCase()) !== -1;
+    });
+    if(!visible.length){ list.appendChild(el('div', 'rail-empty', 'No folders match.')); return; }
+    visible.forEach(function(f){
+      var st = statusOf(f.id);
+      var active = navPath.length && navPath[0].id === f.id;
+      var btn = el('button', 'rail-item' + (active ? ' active' : ''),
+        '<span>' + esc(f.name) + '</span><span class="pill ' + (st === 'done' ? 'pill-done' : 'pill-pending') + '">' +
+        (st === 'done' ? 'Done' : 'Not started') + '</span>');
+      btn.addEventListener('click', function(){ openPath([f]); });
+      list.appendChild(btn);
+    });
+  }
+
+  // ---------- browsing ----------
+  async function openPath(path){
+    navPath = path;
+    var folder = currentFolder();
+    subfolders = []; state = []; removed = [];
+    confirmed = statusOf(folder.id) === 'done';
+
+    var main = document.getElementById('main');
+    main.innerHTML = '';
+    main.appendChild(el('div', 'folder-head',
+      '<div class="folder-name">' + esc(folder.name) + '</div><div class="folder-status" id="folderStatus">Loading…</div>'));
+    var pathEl = el('div', 'folder-path', navPath.map(function(seg, i){
+      var last = i === navPath.length - 1;
+      return '<span class="crumb' + (last ? ' current' : '') + '" data-i="' + i + '">' + esc(seg.name) + '</span>' + (last ? '' : '<span>/</span>');
+    }).join(' '));
+    main.appendChild(pathEl);
+    pathEl.querySelectorAll('.crumb:not(.current)').forEach(function(c){
+      c.addEventListener('click', function(){ openPath(navPath.slice(0, parseInt(c.getAttribute('data-i'), 10) + 1)); });
+    });
+    var subWrap = el('div', 'subfolders'); subWrap.id = 'subfolders'; main.appendChild(subWrap);
+    var grid = el('div', 'grid'); grid.id = 'grid'; main.appendChild(grid);
+    var rbar = el('div', 'removed-bar'); rbar.id = 'removedBar'; main.appendChild(rbar);
+    renderRail();
+
+    try{
+      var files = await listChildren(folder.id);
+      var folderMime = 'application/vnd.google-apps.folder';
+      subfolders = files.filter(function(f){ return f.mimeType === folderMime; })
+        .map(function(f){ return { id: f.id, name: f.name }; });
+      renderSubfolders();
+
+      var images = files.filter(function(f){ return (f.mimeType || '').indexOf('image/') === 0; });
+      if(!images.length){
+        document.getElementById('folderStatus').textContent =
+          subfolders.length ? subfolders.length + ' subfolder' + (subfolders.length === 1 ? '' : 's') : 'Empty';
+        if(!subfolders.length) main.appendChild(el('div', 'empty-state', 'This folder is empty.'));
+        return;
+      }
+
+      var saved = shootState.shoots[folder.id];
+      var notes = {};
+      if(saved && saved.images) saved.images.forEach(function(i){ if(i.description) notes[i.fileId] = i.description; });
+
+      state = images.map(function(f, i){
+        var dot = f.name.lastIndexOf('.');
+        var meta = f.imageMediaMetadata || {};
+        return {
+          fileId: f.id, oldName: f.name,
+          ext: dot >= 0 ? f.name.slice(dot) : '',
+          order: i, label: parseExisting(f.name).label,
+          description: notes[f.id] || '',
+          src: null, loading: true,
+          size: f.size ? parseInt(f.size, 10) : null,
+          w: meta.width || null, h: meta.height || null,
+          file: f
+        };
+      });
+      document.getElementById('folderStatus').textContent = state.length + ' frame' + (state.length === 1 ? '' : 's');
+      renderGrid();
+      buildConfirmBar();
+      loadThumbnails();
+    }catch(e){
+      main.insertBefore(el('div', 'banner banner-warn', 'Could not read that folder. ' + esc(e.message)), main.children[1]);
+    }
+  }
+
+  function renderSubfolders(){
+    var wrap = document.getElementById('subfolders');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    subfolders.forEach(function(sf){
+      var st = statusOf(sf.id);
+      var chip = el('div', 'subfolder-chip',
+        '<span>📁</span><span>' + esc(sf.name) + '</span>' +
+        (st === 'done' ? '<span class="pill pill-done">Done</span>' : ''));
+      chip.addEventListener('click', function(){ openPath(navPath.concat([sf])); });
+      wrap.appendChild(chip);
+    });
+  }
+
+  var THUMB_CONCURRENCY = 4;
+  async function loadThumbnails(){
+    var queue = state.slice();
+    var workers = [];
+    for(var i = 0; i < THUMB_CONCURRENCY; i++) workers.push((async function(){
+      while(queue.length){
+        var item = queue.shift();
+        try{
+          item.src = await thumbFor(item.file);
+          item.loading = false;
+          paint(item);
+        }catch(e){
+          item.loading = false;
+          var l = document.getElementById('loading-' + item.fileId);
+          if(l) l.textContent = 'Preview unavailable';
+        }
+      }
+    })());
+    await Promise.all(workers);
+  }
+
+  function paint(item){
+    var holder = document.getElementById('photo-' + item.fileId);
+    if(!holder || !item.src) return;
+    holder.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = item.src;
+    img.alt = item.oldName;
+    img.addEventListener('click', function(){
+      document.getElementById('lightboxImg').src = item.src;
+      document.getElementById('lightbox').classList.add('show');
+    });
+    holder.appendChild(img);
+    holder.appendChild(el('div', 'order-badge', letterFor(item.order)));
+    addControls(holder, item);
+  }
+  document.getElementById('lightbox').addEventListener('click', function(){ this.classList.remove('show'); });
+
+  function addControls(photo, item){
+    var i = state.indexOf(item);
+    var moves = el('div', 'move-btns');
+    var up = document.createElement('button');
+    up.textContent = '↑'; up.disabled = i === 0 || confirmed; up.title = 'Move earlier';
+    up.addEventListener('click', function(ev){ ev.stopPropagation(); swap(i, i - 1); });
+    var down = document.createElement('button');
+    down.textContent = '↓'; down.disabled = i === state.length - 1 || confirmed; down.title = 'Move later';
+    down.addEventListener('click', function(ev){ ev.stopPropagation(); swap(i, i + 1); });
+    var rm = document.createElement('button');
+    rm.className = 'remove-btn'; rm.textContent = '✕'; rm.disabled = confirmed;
+    rm.title = 'Leave out of this approval (original stays in Drive)';
+    rm.addEventListener('click', function(ev){ ev.stopPropagation(); removeItem(i); });
+    moves.appendChild(up); moves.appendChild(down); moves.appendChild(rm);
+    photo.appendChild(moves);
+    photo.appendChild(el('div', 'grip', '⋮⋮'));
+  }
+
+  function renderGrid(){
+    state.sort(function(a,b){ return a.order - b.order; });
+    state.forEach(function(it, i){ it.order = i; });
+    var grid = document.getElementById('grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    state.forEach(function(item, i){
+      var card = el('div', 'card');
+      card.draggable = !confirmed;
+      card.addEventListener('dragstart', function(){ dragIndex = i; card.classList.add('dragging'); });
+      card.addEventListener('dragend', function(){ card.classList.remove('dragging'); dragIndex = null; });
+      card.addEventListener('dragover', function(ev){
+        if(confirmed || dragIndex === null) return;
+        ev.preventDefault();
+        if(i !== dragIndex) card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', function(){ card.classList.remove('drag-over'); });
+      card.addEventListener('drop', function(ev){
+        ev.preventDefault(); card.classList.remove('drag-over');
+        if(dragIndex === null || dragIndex === i) return;
+        moveItem(dragIndex, i); dragIndex = null;
+      });
+
+      var photo = el('div', 'card-photo');
+      photo.id = 'photo-' + item.fileId;
+      if(item.src){
+        card.appendChild(photo);
+      } else {
+        photo.innerHTML = '<span class="loading" id="loading-' + item.fileId + '">Loading preview…</span>';
+        card.appendChild(photo);
+      }
+
+      var body = el('div', 'card-body');
+      body.appendChild(el('div', 'orig-name', esc(item.oldName)));
+      var dims = dimText(item);
+      if(dims) body.appendChild(el('div', 'dim-label', dims));
+
+      var desc = document.createElement('textarea');
+      desc.className = 'desc-input'; desc.rows = 2;
+      desc.placeholder = 'Note for whoever edits this (optional)';
+      desc.value = item.description || ''; desc.disabled = confirmed;
+      desc.addEventListener('input', function(){ item.description = desc.value; });
+      body.appendChild(desc);
+
+      var input = document.createElement('input');
+      input.className = 'label-input';
+      input.placeholder = 'Tag (Style Guide, Wash Care…)';
+      input.value = item.label; input.disabled = confirmed;
+      body.appendChild(input);
+
+      var chips = el('div', 'chips');
+      KNOWN_LABELS.forEach(function(lbl){
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip' + (item.label === lbl ? ' on' : '');
+        chip.textContent = lbl; chip.disabled = confirmed;
+        chip.addEventListener('click', function(){
+          item.label = (item.label === lbl) ? '' : lbl;
+          renderGrid();
+        });
+        chips.appendChild(chip);
+      });
+      body.appendChild(chips);
+
+      var nameEl = el('div', 'new-name', '→ ' + esc(newNameFor(item)));
+      input.addEventListener('input', function(){
+        item.label = input.value;
+        nameEl.textContent = '→ ' + newNameFor(item);
+      });
+      body.appendChild(nameEl);
+
+      card.appendChild(body);
+      grid.appendChild(card);
+      if(item.src) paint(item); else addControls(photo, item);
+    });
+    updateRemovedBar();
+  }
+
+  function swap(i, j){
+    if(j < 0 || j >= state.length) return;
+    var t = state[i].order; state[i].order = state[j].order; state[j].order = t;
+    renderGrid();
+  }
+  function moveItem(from, to){
+    var moved = state.splice(from, 1)[0];
+    state.splice(to, 0, moved);
+    state.forEach(function(it, i){ it.order = i; });
+    renderGrid();
+  }
+  function removeItem(i){
+    removed.push(state.splice(i, 1)[0]);
+    state.forEach(function(it, idx){ it.order = idx; });
+    renderGrid();
+  }
+  function restoreItem(ri){
+    var item = removed.splice(ri, 1)[0];
+    item.order = state.length;
+    state.push(item);
+    renderGrid();
+  }
+  function updateRemovedBar(){
+    var bar = document.getElementById('removedBar');
+    if(!bar) return;
+    if(!removed.length){ bar.className = 'removed-bar'; bar.innerHTML = ''; return; }
+    bar.className = 'removed-bar show';
+    bar.innerHTML = '';
+    bar.appendChild(el('div', 'removed-title',
+      removed.length + ' photo' + (removed.length === 1 ? '' : 's') + ' left out of this approval (originals stay untouched in Drive)'));
+    var list = el('div', 'removed-list');
+    removed.forEach(function(r, ri){
+      var chip = document.createElement('button');
+      chip.className = 'removed-chip';
+      chip.textContent = r.oldName + '  ↩';
+      chip.title = 'Put this photo back';
+      chip.disabled = confirmed;
+      chip.addEventListener('click', function(){ restoreItem(ri); });
+      list.appendChild(chip);
+    });
+    bar.appendChild(list);
+  }
+
+  // ---------- approving ----------
+  function buildConfirmBar(){
+    var old = document.querySelector('.confirm-bar');
+    if(old) old.remove();
+    var bar = el('div', 'confirm-bar');
+    bar.innerHTML = '<div class="confirm-text" id="confirmText"></div><div id="confirmAction"></div>';
+    document.body.appendChild(bar);
+    updateConfirmBar();
+  }
+
+  function updateConfirmBar(){
+    var textEl = document.getElementById('confirmText');
+    var actionEl = document.getElementById('confirmAction');
+    var folder = currentFolder();
+    if(!textEl || !folder) return;
+
+    if(confirmed){
+      var rec = shootState.shoots[folder.id] || {};
+      var link = 'https://drive.google.com/drive/folders/' + (rec.finalFolderId || FINAL_FOLDER_ID);
+      textEl.innerHTML = 'Approved — copied into <strong>Final/' + esc(rec.destName || folder.name) + '/</strong>';
+      actionEl.innerHTML = '<a class="confirm-link" href="' + link + '" target="_blank" rel="noopener">Open in Drive →</a>';
+      return;
+    }
+    textEl.innerHTML = 'Copies into <strong>Final/&lt;name you give it&gt;/</strong> once you name the curtain type and colour';
+    actionEl.innerHTML = '';
+    var btn = document.createElement('button');
+    btn.className = 'confirm-btn';
+    btn.textContent = 'Approve order for ' + folder.name;
+    btn.addEventListener('click', showNamePrompt);
+    actionEl.appendChild(btn);
+  }
+
+  async function showNamePrompt(){
+    var folder = currentFolder();
+    var actionEl = document.getElementById('confirmAction');
+    var textEl = document.getElementById('confirmText');
+    textEl.innerHTML = 'Name this folder and choose where it goes:';
+    actionEl.innerHTML = '<span class="loading">Loading folders…</span>';
+
+    var dests = [];
+    try{
+      dests = (await listChildren(FINAL_FOLDER_ID))
+        .filter(function(f){ return f.mimeType === 'application/vnd.google-apps.folder'; })
+        .map(function(f){ return { id: f.id, name: f.name }; });
+    }catch(e){ /* the top level is still available */ }
+    if(!currentFolder() || currentFolder().id !== folder.id) return;
+    actionEl.innerHTML = '';
+
+    var select = document.createElement('select');
+    select.className = 'label-input';
+    var rootOpt = document.createElement('option');
+    rootOpt.value = FINAL_FOLDER_ID; rootOpt.textContent = 'Final/ (top level)';
+    select.appendChild(rootOpt);
+    dests.forEach(function(d){
+      var o = document.createElement('option');
+      o.value = d.id; o.textContent = 'Inside ' + d.name + '/'; o.dataset.name = d.name;
+      select.appendChild(o);
+    });
+
+    var input = document.createElement('input');
+    input.className = 'label-input';
+    input.style.width = '170px';
+    input.placeholder = 'e.g. Zoom Blue';
+    input.value = suggestDestName(folder.name);
+
+    var preview = el('span', 'toast', '');
+    function updatePreview(){
+      var name = input.value.trim();
+      var opt = select.options[select.selectedIndex];
+      var parent = (opt && opt.value !== FINAL_FOLDER_ID) ? ('Final/' + opt.dataset.name + '/') : 'Final/';
+      var sample = state[0] ? newNameFor(state[0]) : 'a.jpg';
+      preview.textContent = name ? ('→ ' + parent + name + '/' + sample + ' (new folder)') : '';
+    }
+    select.addEventListener('change', updatePreview);
+    input.addEventListener('input', updatePreview);
+    updatePreview();
+
+    var save = document.createElement('button');
+    save.className = 'confirm-btn'; save.textContent = 'Save';
+    var cancel = document.createElement('button');
+    cancel.className = 'confirm-btn';
+    cancel.style.background = 'transparent'; cancel.style.color = 'var(--ink-soft)';
+    cancel.style.border = '1px solid var(--rule)';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', updateConfirmBar);
+    save.addEventListener('click', function(){
+      var name = input.value.trim();
+      if(!name){ input.focus(); return; }
+      approve(name, select.value);
+    });
+
+    actionEl.appendChild(select); actionEl.appendChild(input);
+    actionEl.appendChild(preview); actionEl.appendChild(save); actionEl.appendChild(cancel);
+    input.focus(); input.select();
+  }
+
+  async function approve(destName, parentId){
+    var folder = currentFolder();
+    var actionEl = document.getElementById('confirmAction');
+    actionEl.innerHTML = '';
+    var btn = document.createElement('button');
+    btn.className = 'confirm-btn'; btn.disabled = true; btn.textContent = 'Copying…';
+    actionEl.appendChild(btn);
+
+    try{
+      // Always a folder of its own, so one shoot never mixes with another.
+      var q = encodeURIComponent("'" + qEsc(parentId) + "' in parents and name = '" + qEsc(destName) +
+              "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+      var found = await drive('/files?q=' + q + '&fields=files(id)');
+      var destId = (found.files && found.files.length) ? found.files[0].id : (await createFolder(destName, parentId)).id;
+
+      var ordered = state.slice().sort(function(a,b){ return a.order - b.order; });
+      var recorded = [];
+      for(var i = 0; i < ordered.length; i++){
+        btn.textContent = 'Copying ' + (i + 1) + ' of ' + ordered.length + '…';
+        var nm = newNameFor(ordered[i]);
+        var copied = await copyFile(ordered[i].fileId, nm, destId);
+        recorded.push({
+          fileId: ordered[i].fileId, copiedFileId: copied.id,
+          oldName: ordered[i].oldName, newName: nm,
+          order: ordered[i].order, description: ordered[i].description || '',
+          sizeBytes: ordered[i].size || null
+        });
+      }
+      removed.forEach(function(r){
+        recorded.push({ fileId: r.fileId, oldName: r.oldName, excluded: true, description: r.description || '' });
+      });
+
+      shootState.shoots[folder.id] = {
+        folderId: folder.id,
+        folderPath: navPath.map(function(s){ return s.name; }),
+        destName: destName,
+        finalFolderId: destId,
+        approvedAt: new Date().toISOString(),
+        images: recorded
+      };
+      await saveShootState();
+
+      confirmed = true;
+      renderRail(); renderSubfolders(); renderGrid(); updateConfirmBar();
+    }catch(e){
+      updateConfirmBar();
+      var main = document.getElementById('main');
+      main.insertBefore(el('div', 'banner banner-warn', 'Copying failed: ' + esc(e.message)), main.firstChild);
+    }
+  }
+
+  // ---------- start ----------
+  async function start(){
+    if(!ROOT_FOLDER_ID || !FINAL_FOLDER_ID){ renderFolderSetup(); return; }
+    renderShell();
+    await loadShootState();
+    await loadFolders();
+  }
+
+  // Decide what to show from the settings alone, straight away — never make
+  // anyone stare at a blank screen while a third-party script loads.
+  function boot(){
+    if(!CLIENT_ID || CLIENT_ID.indexOf('PASTE') === 0){ renderSetupNeeded(); return; }
+
+    var resumed = false;
+    try{
+      var saved = sessionStorage.getItem('so_token');
+      var exp = parseInt(sessionStorage.getItem('so_exp') || '0', 10);
+      if(saved && exp > Date.now()){ token = saved; tokenExpiry = exp; resumed = true; }
+    }catch(e){}
+
+    if(resumed) start(); else renderSignIn();
+    waitForGoogle();
+  }
+
+  var tries = 0;
+  function waitForGoogle(){
+    if(window.google && google.accounts && google.accounts.oauth2){
+      googleReady = true;
+      initTokenClient();
+      return;
+    }
+    if(++tries > 100){
+      var msg = document.getElementById('signInMsg');
+      if(msg) msg.textContent =
+        'Could not load Google sign-in. Check your connection (or any ad-blocker) and reload the page.';
+      return;
+    }
+    setTimeout(waitForGoogle, 100);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
