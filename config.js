@@ -14,7 +14,11 @@ window.SHOOT_ORDER_CONFIG = {
   // Paste the OAuth client ID from Google Cloud here. It looks like:
   //   1234567890-abc123def456.apps.googleusercontent.com
   // Step 1 of the README explains how to get it.
+<<<<<<< HEAD
   clientId: "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
+=======
+  clientId: "92967710711-u9mka0vh9a9pf64bj5fo32rptfq2v0hh.apps.googleusercontent.com",
+>>>>>>> edacd79 (2)
 
   // Optional, but needed for the one-click "Choose folder…" picker to open.
   // Google Cloud → APIs & Services → Credentials → Create credentials →
